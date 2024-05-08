@@ -3,7 +3,7 @@
 
 *-uts*: unfilered list of TSS/TES regions *[required]*           
 
-*-hf*: list of regions of active genes *[required]* (”histon file”, for L36/H3K4me3 
+*-hf*: list of regions of active genes *[required]* (”histon file”, for L36/H3K4me3)
 
 *-p2p:* A2A peak file from FitHiChIP *[required]* 
 
