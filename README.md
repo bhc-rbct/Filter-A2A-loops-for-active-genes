@@ -1,11 +1,11 @@
 # Filter A2A loops for active genes
 **Parameters:** 
 
-*-uts*: unfilered list of TSS/TES regions *[required]*           (*basePath*\NS\HiChIPScriptData\TSS_TES.bed)
+*-uts*: unfilered list of TSS/TES regions *[required]*           
 
-*-hf*: list of regions of active genes *[required]* (”histon file”, for L36/H3K4me3 *basePath\*NS\HiChIPScriptData\L36pl_H3K4me3.bed)
+*-hf*: list of regions of active genes *[required]* (”histon file”, for L36/H3K4me3 
 
-*-p2p:* A2A peak file from FitHiChIP *[required]* (Tom knows how to produce them  + has produced some under Projects/Johnsen_group/shared jg/HiChip)
+*-p2p:* A2A peak file from FitHiChIP *[required]* 
 
 *-tff*: regions of interest *[required]* (usually from transcription factor)
 
@@ -26,5 +26,4 @@ One can use this file as input for the next runs of the script (together with �
 
 **Notes:** 
 
-- Run with sudo & python3 on worker
 - BedTools has to be installed
