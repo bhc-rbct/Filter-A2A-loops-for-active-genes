@@ -24,7 +24,9 @@ TES_TES_OFFSET = 9
 COL_NAMES_GENE = "TSS_gene_name"
 P2P_SCORE = "p2p2_score"
 COL_NAMES_BEDPE = ["chrom1", "start1", "end1", "chrom2", "start2", "end2", P2P_SCORE, "TSS_chrom",
-                   "TSS_start", "TSS_end", "TSS_gene_name", "TSS_score", "TSS_strand", "TF_chrom", "TF_start", "TF_end"]
+                   "TSS_start", "TSS_end", COL_NAMES_GENE, "TF_chrom", "TF_start", "TF_end"]
+COL_NAMES_BEDPE_OLD = ["chrom1", "start1", "end1", "chrom2", "start2", "end2", P2P_SCORE, "TSS_chrom",
+                   "TSS_start", "TSS_end", COL_NAMES_GENE, "TSS_score", "TSS_strand", "TF_chrom", "TF_start", "TF_end"]
 COL_NAMES_BED_INTERSECT = ["TSS_chrom", "TSS_start", "TSS_end", COL_NAMES_GENE,
                            "TSS_score", "TSS_strand", "H3K4me3_chrom", "H3K4me3_start", "H3K4me3_end"]
 COL_NAMES_BED_INTERSECT_KEEP = ["H3K4me3_chrom",
@@ -181,6 +183,32 @@ def get_is_per_gene_df(p2p_for_TSS_iag_df, min_score):
 
     return interactions_summary
 
+def get_interaction_per_enhancer_df(p2p_for_TSS_iag_df, min_score):
+    """
+    Summarizes the number of interactions per gene, with optional score filtering.
+
+    Args:
+        p2p_for_TSS_iag_df (pd.DataFrame): DataFrame of P2P interactions.
+        min_score (float): Minimum score threshold for filtering interactions.
+
+    Returns:
+        pd.DataFrame: DataFrame summarizing interactions per gene.
+    """
+    # Apply minimum score filter if required
+    if min_score > 1:
+        p2p_for_TSS_iag_df = p2p_for_TSS_iag_df[p2p_for_TSS_iag_df[P2P_SCORE] >= min_score]
+
+    # Group by gene, summing scores, and sort by interaction score
+    interactions_summary = (
+        p2p_for_TSS_iag_df
+        .groupby(["TF_chrom", "TF_start", "TF_end"])[P2P_SCORE]
+        .sum()
+        .reset_index()
+        #.sort_values(by=[P2P_SCORE], ascending=False)
+    )
+
+    return interactions_summary
+
 
 def runAllSteps(
     genes_list: List[str],
@@ -231,17 +259,18 @@ def runAllSteps(
         print(f"Reduced from {len(tSS_TSE_ig_bed)} to {len(tSS_iag_bed)} TSS/TES (with duplicates)")
 
         # Save filtered file, remove duplicates, and update BedTool object
-        tSS_iag_bed.saveas(output_dir / f"{TS_fPrefix}_iag.bed")
+        tSS_iag_bed.saveas(output_dir / f"enhancer_region_plus_gene_names_for_iag.bed")
         tss_iag_df_right_format = (
-            read_bed_as_df(output_dir / f"{TS_fPrefix}_iag.bed", custom_col_name=COL_NAMES_BED_INTERSECT)
+            read_bed_as_df(output_dir / f"enhancer_region_plus_gene_names_for_iag.bed", custom_col_name=COL_NAMES_BED_INTERSECT)
             [COL_NAMES_BED_INTERSECT_KEEP]
             .drop_duplicates()
         )
         tss_iag_df_right_format.to_csv(
-            output_dir / f"{TS_fPrefix}_iag.bed", header=None, index=None, sep='\t'
+            output_dir / f"enhancer_region_plus_gene_names_for_iag.bed", header=None, index=None, sep='\t'
         )
+
         print(f"Reduced from {len(tSS_TSE_ig_bed)} to {len(tss_iag_df_right_format)} TSS/TES (without duplicates)")
-        tSS_iag_bed = BedTool(output_dir / f"{TS_fPrefix}_iag.bed")
+        tSS_iag_bed = BedTool(output_dir / f"enhancer_region_plus_gene_names_for_iag.bed")
     else:
         print("Using pre-filtered TSS/TES file...")
         tSS_iag_bed = BedTool(ts_iag_file)
@@ -256,24 +285,32 @@ def runAllSteps(
         output_dir / f"{resFPrefix}{INT_P2P_NAME}", custom_col_name=COL_NAMES_BEDPE
     )
 
+
     # Step 4: Aggregate and filter interactions
     is_per_gene_df = get_is_per_gene_df(p2p_for_TSS_iag_df, min_P2P_SCORE)
     is_per_gene_df.to_csv(
-        output_dir / f"{resFPrefix}_ms{min_P2P_SCORE}_TS_{ts_kind}_perGene.txt",
+        output_dir / f"interaction_per_iag.txt",
+        sep='\t', header=None, index=None
+    )
+
+    # Step 5: Aggregate and filter interactions
+    interaction_per_enhencer_region = get_interaction_per_enhancer_df(p2p_for_TSS_iag_df, min_P2P_SCORE)
+    interaction_per_enhencer_region.to_csv(
+        output_dir / f"interaction_per_enhancer_region_iag.bed",
         sep='\t', header=None, index=None
     )
 
     p2p_for_TSS_iag_df_g = agg_unique_p2p_plus_filter(p2p_for_TSS_iag_df, min_P2P_SCORE)
     p2p_for_TSS_iag_df_g.to_csv(
-        output_dir / f"{resFPrefix}_ms{min_P2P_SCORE}_TS_{ts_kind}_P2P.bedpe",
+        output_dir / f"p2p_plus_numInteractions_plus_associated_iaGeneList.bedpe",
         sep='\t', header=None, index=None
     )
     print(f"Reduced from {len(p2p_bedpe)} to {len(p2p_for_TSS_iag_df_g)} P2P interactions")
 
     # Save active genes and clean up intermediate files
     active_genes = is_per_gene_df.iloc[:, 0].tolist()
-    TSS_active_genes = tss_ip_df[tss_ip_df.iloc[:, 3].isin(active_genes)]
-    TSS_active_genes.to_csv(output_dir / 'TSS_TES_iag.bed', sep='\t', header=False, index=False)
+    TSS_active_genes = tSS_TSE_df[tSS_TSE_df.iloc[:, 3].isin(active_genes)].drop_duplicates(subset=[tSS_TSE_df.columns[3]], keep='first')
+    TSS_active_genes.to_csv(output_dir / 'TSS_TES_for_iag_only_first_appearance_per_gene.bed', sep='\t', header=False, index=False)
 
     os.remove(output_dir / f"{resFPrefix}{INT_P2P_NAME}")
     os.remove(tSS_TSE_df_ig_path)
