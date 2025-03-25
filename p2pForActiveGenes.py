@@ -218,7 +218,6 @@ def runAllSteps(
     p2p_bedpe: BedTool,
     ts_kind: str,
     min_P2P_SCORE: int,
-    ts_iag_file: str,
     resFPrefix: str,
     TS_fPrefix: str,
     output_dir: str
@@ -234,7 +233,6 @@ def runAllSteps(
         p2p_bedpe (BedTool): BedTool object for P2P interactions.
         ts_kind (str): Type of transcription site to consider ('TSS', 'TES', or 'both').
         min_P2P_SCORE (int): Minimum score threshold for filtering P2P interactions.
-        ts_iag_file (str): Pre-filtered TSS/TES file path, if available.
         resFPrefix (str): Prefix for result files.
         TS_fPrefix (str): Prefix for transcription site-related files.
         output_dir (str): Directory for saving output files.
@@ -243,37 +241,35 @@ def runAllSteps(
         None
     """
     # Step 1: Process TSS/TES filtering if no pre-filtered file is provided
-    if ts_iag_file is None:
-        print('-------- STEP 1: Get TSS/TES of interesting genes ------------')
-        tss_ip_df = get_TSS_for_interesting_genes(genes_list, tSS_TSE_df, ts_kind)
-        print(f"Reduced from {len(tSS_TSE_df)} to {len(tss_ip_df)} TSS/TES")
 
-        # Save filtered TSS/TES file for BedTool processing
-        tSS_TSE_df_ig_path = output_dir / f"{TS_fPrefix}_ig.bed"
-        tss_ip_df.to_csv(tSS_TSE_df_ig_path, sep='\t', header=None, index=None)
-        tSS_TSE_ig_bed = BedTool(tSS_TSE_df_ig_path)
+    print('-------- STEP 1: Get TSS/TES of interesting genes ------------')
+    tss_ip_df = get_TSS_for_interesting_genes(genes_list, tSS_TSE_df, ts_kind)
+    print(f"Reduced from {len(tSS_TSE_df)} to {len(tss_ip_df)} TSS/TES")
 
-        # Step 2: Filter TSS/TES for active genes using histone marks
-        print('-------- STEP 2: Get TSS/TES of active genes ------------')
-        tSS_iag_bed = get_TSS_for_active_genes(tSS_TSE_ig_bed, h3k4me3_bed)
-        print(f"Reduced from {len(tSS_TSE_ig_bed)} to {len(tSS_iag_bed)} TSS/TES (with duplicates)")
+    # Save filtered TSS/TES file for BedTool processing
+    tSS_TSE_df_ig_path = output_dir / f"{TS_fPrefix}_ig.bed"
+    tss_ip_df.to_csv(tSS_TSE_df_ig_path, sep='\t', header=None, index=None)
+    tSS_TSE_ig_bed = BedTool(tSS_TSE_df_ig_path)
 
-        # Save filtered file, remove duplicates, and update BedTool object
-        tSS_iag_bed.saveas(output_dir / f"enhancer_region_plus_gene_names_for_iag.bed")
-        tss_iag_df_right_format = (
-            read_bed_as_df(output_dir / f"enhancer_region_plus_gene_names_for_iag.bed", custom_col_name=COL_NAMES_BED_INTERSECT)
-            [COL_NAMES_BED_INTERSECT_KEEP]
-            .drop_duplicates()
-        )
-        tss_iag_df_right_format.to_csv(
-            output_dir / f"enhancer_region_plus_gene_names_for_iag.bed", header=None, index=None, sep='\t'
-        )
+    # Step 2: Filter TSS/TES for active genes using histone marks
+    print('-------- STEP 2: Get TSS/TES of active genes ------------')
+    tSS_iag_bed = get_TSS_for_active_genes(tSS_TSE_ig_bed, h3k4me3_bed)
+    print(f"Reduced from {len(tSS_TSE_ig_bed)} to {len(tSS_iag_bed)} TSS/TES (with duplicates)")
 
-        print(f"Reduced from {len(tSS_TSE_ig_bed)} to {len(tss_iag_df_right_format)} TSS/TES (without duplicates)")
-        tSS_iag_bed = BedTool(output_dir / f"enhancer_region_plus_gene_names_for_iag.bed")
-    else:
-        print("Using pre-filtered TSS/TES file...")
-        tSS_iag_bed = BedTool(ts_iag_file)
+    # Save filtered file, remove duplicates, and update BedTool object
+    tSS_iag_bed.saveas(output_dir / f"{TS_fPrefix}_iag.bed")
+    tss_iag_df_right_format = (
+        read_bed_as_df(output_dir / f"{TS_fPrefix}_iag.bed", custom_col_name=COL_NAMES_BED_INTERSECT)
+        [COL_NAMES_BED_INTERSECT_KEEP]
+        .drop_duplicates()
+    )
+    tss_iag_df_right_format.to_csv(
+        output_dir / f"{TS_fPrefix}_iag.bed", header=None, index=None, sep='\t'
+    )
+
+    print(f"Reduced from {len(tSS_TSE_ig_bed)} to {len(tss_iag_df_right_format)} TSS/TES (without duplicates)")
+    tSS_iag_bed = BedTool(output_dir / f"{TS_fPrefix}_iag.bed")
+
 
     # Step 3: Filter P2P interactions based on filtered TSS/TES
     print('-------- STEP 3: P2P filtering ------------')
@@ -314,6 +310,8 @@ def runAllSteps(
 
     os.remove(output_dir / f"{resFPrefix}{INT_P2P_NAME}")
     os.remove(tSS_TSE_df_ig_path)
+    os.remove(output_dir / f"{TS_fPrefix}_iag.bed")
+
 
 
 def main(args):
@@ -355,7 +353,7 @@ def main(args):
 
     # Run main steps
     runAllSteps(i_genes_list, tSS_TSE_df, h3k4me3_bed, tF_bed, p2p_bedpe, args.kind_TS,
-                args.min_P2P_SCORE, args.tSS_TSE_f, resFPrefix, TS_fPrefix, output_directory)
+                args.min_P2P_SCORE, resFPrefix, TS_fPrefix, output_directory)
     
     # Clean up temporary files
     os.remove(tf_temp_path)
@@ -380,8 +378,8 @@ if __name__ == "__main__":
                         help='Path to the P2P file (BEDPE format)')
     parser.add_argument('-tff', '--tF_bed_file', type=str, required=True,
                         help='Path to the Transcription Factor BED file')
-    parser.add_argument('-fts', '--tSS_TSE_f', type=str, required=False,
-                        help='Path to the filtered TSS/TES file (BED format)')
+    # parser.add_argument('-fts', '--tSS_TSE_f', type=str, required=False,
+    #                     help='Path to the filtered TSS/TES file (BED format)')
     parser.add_argument('-o', '--output_directory', type=str, default='./', required=False,
                         help='Path to the output directory (default: current directory)')
     parser.add_argument('-mS', '--min_P2P_SCORE', type=int, default=1, required=False,
