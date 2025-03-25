@@ -44,17 +44,41 @@ BED_COL_NAMES_G = ["chrom", "chromStart", "chromEnd", "name", "score", "strand",
 # Utility Functions
 def read_bed_as_df(file, custom_col_name=[], set_numcols=None):
     """
-    Reads a BED file into a Pandas DataFrame and sets column names.
+    Reads a BED file into a Pandas DataFrame, handling both regular and split-line formats.
+    Automatically detects and combines split lines when needed.
     """
-    df = pd.read_table(file).dropna(how="all", axis=1)
+    # First try reading normally
+    try:
+        df = pd.read_table(file, header=None).dropna(how="all", axis=1)
+        
+        # Check if this looks like split-line format (every other line has fewer columns)
+        if len(df.columns) <= 3 and len(df) > 1:
+            raise ValueError("Detected possible split-line format")
+            
+    except (ValueError, pd.errors.ParserError):
+        # If normal reading fails or split-line detected, use line-combining approach
+        with open(file, 'r') as f:
+            lines = [line.strip() for line in f if line.strip()]
+        
+        # Combine every two lines into one
+        combined = []
+        for i in range(0, len(lines), 2):
+            if i+1 < len(lines):
+                combined.append(lines[i] + '\t' + lines[i+1])
+        
+        # Read the combined lines
+        from io import StringIO
+        df = pd.read_table(StringIO('\n'.join(combined)), header=None).dropna(how="all", axis=1)
+    # Set column names
     num_used_cols = min(set_numcols, len(df.columns)) if set_numcols else len(df.columns)
     col_names = custom_col_name[:num_used_cols] + [
         f"unnamed_{i}" for i in range(num_used_cols - len(custom_col_name))
     ]
+    
     df_cleaned = df.iloc[:, :num_used_cols]
     df_cleaned.columns = col_names
+    
     return df_cleaned
-
 
 def provide_TSS_or_TES_per_gene(row, ts_type):
     """
@@ -128,6 +152,7 @@ def get_P2P_for_with_TSS(p2p_bedpe, tSS_iag_bed, tF_bed):
     # Further filter interactions with TF regions that do not overlap TSS
     p2p_for_TSS_iag_tf = p2p_for_TSS_iag.pair_to_bed(tf_wo_tss, type="xor")
 
+
     return p2p_for_TSS_iag_tf
 
 
@@ -144,11 +169,13 @@ def agg_unique_p2p_plus_filter(p2p_for_TSS_iag_df, min_score):
     """
     # Group by P2P columns, aggregate unique genes
     grouped_df = (
-        p2p_for_TSS_iag_df
-        .groupby(COL_NAMES_BEDPE_GB)[COL_NAMES_GENE]
-        .unique()
-        .reset_index()
+    p2p_for_TSS_iag_df
+    .groupby(COL_NAMES_BEDPE_GB, as_index=False)
+    .agg(
+        **{P2P_SCORE: (P2P_SCORE, 'sum')},
+        **{COL_NAMES_GENE: (COL_NAMES_GENE, lambda x: list(x.unique()))}
     )
+)
 
     # Apply minimum score filter if required
     if min_score > 1:
@@ -276,11 +303,11 @@ def runAllSteps(
     p2p_for_TSS_iag = get_P2P_for_with_TSS(p2p_bedpe, tSS_iag_bed, tF_bed)
     p2p_for_TSS_iag.saveas(output_dir / f"{resFPrefix}{INT_P2P_NAME}")
 
+
     # Load P2P interactions into a DataFrame for further processing
     p2p_for_TSS_iag_df = read_bed_as_df(
         output_dir / f"{resFPrefix}{INT_P2P_NAME}", custom_col_name=COL_NAMES_BEDPE
     )
-
 
     # Step 4: Aggregate and filter interactions
     is_per_gene_df = get_is_per_gene_df(p2p_for_TSS_iag_df, min_P2P_SCORE)
@@ -308,7 +335,7 @@ def runAllSteps(
     TSS_active_genes = tSS_TSE_df[tSS_TSE_df.iloc[:, 3].isin(active_genes)].drop_duplicates(subset=[tSS_TSE_df.columns[3]], keep='first')
     TSS_active_genes.to_csv(output_dir / 'TSS_TES_for_iag_only_first_appearance_per_gene.bed', sep='\t', header=False, index=False)
 
-    os.remove(output_dir / f"{resFPrefix}{INT_P2P_NAME}")
+    # os.remove(output_dir / f"{resFPrefix}{INT_P2P_NAME}")
     os.remove(tSS_TSE_df_ig_path)
     os.remove(output_dir / f"{TS_fPrefix}_iag.bed")
 
