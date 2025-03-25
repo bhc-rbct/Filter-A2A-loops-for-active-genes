@@ -7,7 +7,7 @@
 - **`-p2p`**: A2A peak file from FitHiChIP (required)
 - **`-tff`**: Regions of interest, typically from a transcription factor (required)
 - **`-g`**: List of gene names of interest (optional)
-- **`-o`**: Path to the output directory (optional, default: current directory)
+- **`-o`**: Path to the output directory - parent directories and the output directory will be created, if not already there (optional, default: current directory)
 - **`-ms`**: Minimum score (number of contacts) to keep in the P2P (optional, default: 1)
 - **`-kindTS`**: Specifies the type of transcription site region (optional, default: 'TSS', choices: 'both', 'TSS', 'TES')
 
