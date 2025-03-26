@@ -44,41 +44,17 @@ BED_COL_NAMES_G = ["chrom", "chromStart", "chromEnd", "name", "score", "strand",
 # Utility Functions
 def read_bed_as_df(file, custom_col_name=[], set_numcols=None):
     """
-    Reads a BED file into a Pandas DataFrame, handling both regular and split-line formats.
-    Automatically detects and combines split lines when needed.
+    Reads a BED file into a Pandas DataFrame and sets column names.
     """
-    # First try reading normally
-    try:
-        df = pd.read_table(file, header=None).dropna(how="all", axis=1)
-        
-        # Check if this looks like split-line format (every other line has fewer columns)
-        if len(df.columns) <= 3 and len(df) > 1:
-            raise ValueError("Detected possible split-line format")
-            
-    except (ValueError, pd.errors.ParserError):
-        # If normal reading fails or split-line detected, use line-combining approach
-        with open(file, 'r') as f:
-            lines = [line.strip() for line in f if line.strip()]
-        
-        # Combine every two lines into one
-        combined = []
-        for i in range(0, len(lines), 2):
-            if i+1 < len(lines):
-                combined.append(lines[i] + '\t' + lines[i+1])
-        
-        # Read the combined lines
-        from io import StringIO
-        df = pd.read_table(StringIO('\n'.join(combined)), header=None).dropna(how="all", axis=1)
-    # Set column names
+    df = pd.read_table(file).dropna(how="all", axis=1)
     num_used_cols = min(set_numcols, len(df.columns)) if set_numcols else len(df.columns)
     col_names = custom_col_name[:num_used_cols] + [
         f"unnamed_{i}" for i in range(num_used_cols - len(custom_col_name))
     ]
-    
     df_cleaned = df.iloc[:, :num_used_cols]
     df_cleaned.columns = col_names
-    
     return df_cleaned
+
 
 def provide_TSS_or_TES_per_gene(row, ts_type):
     """
@@ -152,7 +128,6 @@ def get_P2P_for_with_TSS(p2p_bedpe, tSS_iag_bed, tF_bed):
     # Further filter interactions with TF regions that do not overlap TSS
     p2p_for_TSS_iag_tf = p2p_for_TSS_iag.pair_to_bed(tf_wo_tss, type="xor")
 
-
     return p2p_for_TSS_iag_tf
 
 
@@ -169,17 +144,11 @@ def agg_unique_p2p_plus_filter(p2p_for_TSS_iag_df, min_score):
     """
     # Group by P2P columns, aggregate unique genes
     grouped_df = (
-    p2p_for_TSS_iag_df
-    .groupby(COL_NAMES_BEDPE_GB, as_index=False)
-    .agg(
-        **{P2P_SCORE: (P2P_SCORE, 'sum')},
-        **{COL_NAMES_GENE: (COL_NAMES_GENE, lambda x: list(x.unique()))}
+        p2p_for_TSS_iag_df
+        .groupby(COL_NAMES_BEDPE_GB)[COL_NAMES_GENE]
+        .unique()
+        .reset_index()
     )
-)
-
-    # Apply minimum score filter if required
-    if min_score > 1:
-        grouped_df = grouped_df[grouped_df[P2P_SCORE] >= min_score]
 
     return grouped_df
 
@@ -303,11 +272,11 @@ def runAllSteps(
     p2p_for_TSS_iag = get_P2P_for_with_TSS(p2p_bedpe, tSS_iag_bed, tF_bed)
     p2p_for_TSS_iag.saveas(output_dir / f"{resFPrefix}{INT_P2P_NAME}")
 
-
     # Load P2P interactions into a DataFrame for further processing
     p2p_for_TSS_iag_df = read_bed_as_df(
         output_dir / f"{resFPrefix}{INT_P2P_NAME}", custom_col_name=COL_NAMES_BEDPE
     )
+
 
     # Step 4: Aggregate and filter interactions
     is_per_gene_df = get_is_per_gene_df(p2p_for_TSS_iag_df, min_P2P_SCORE)
@@ -326,7 +295,7 @@ def runAllSteps(
     p2p_for_TSS_iag_df_g = agg_unique_p2p_plus_filter(p2p_for_TSS_iag_df, min_P2P_SCORE)
     p2p_for_TSS_iag_df_g.to_csv(
         output_dir / f"p2p_plus_numInteractions_plus_associated_iaGeneList.bedpe",
-        sep='\t', header=None, index=None
+        sep='\t', header=False, index=False
     )
     print(f"Reduced from {len(p2p_bedpe)} to {len(p2p_for_TSS_iag_df_g)} P2P interactions")
 
@@ -371,7 +340,10 @@ def main(args):
     tF_bed = BedTool(tf_temp_path)
 
     # Load P2P file
-    p2p_bedpe = BedTool(args.p2p_file)
+    p2p_temp_path = output_directory / f"{os.path.splitext(tf_basename)[0]}_temp.bedpe"
+    tf_df = read_bed_as_df(args.p2p_file, custom_col_name=COL_NAMES_BEDPE_GB, set_numcols=7)
+    tf_df.to_csv(p2p_temp_path, sep='\t', header=None, index=None)
+    p2p_bedpe = BedTool(p2p_temp_path)
 
     # Generate file prefixes for output
     resFPrefix = f"{os.path.basename(args.p2p_file).split('.bedpe')[0].replace('A2A', '')}x_{os.path.basename(args.tF_bed_file).split('.bed')[0]}"
@@ -384,6 +356,8 @@ def main(args):
     
     # Clean up temporary files
     os.remove(tf_temp_path)
+    os.remove(p2p_temp_path)
+
     
     print(f"--- Total execution time: {time() - start_time:.2f} seconds ---")
 
@@ -423,28 +397,3 @@ if __name__ == "__main__":
     # Run the main function
     main(args)
 
-
-# def read_xlxs(filename, sheet_num, read_hidden= False):
-
-#     # Read Excel file as Pandas DataFrame
-#     df = pd.read_excel(filename)
-
-#     # Open an Excel workbook
-#     workbook = openpyxl.load_workbook(filename)
-
-#     # Create a `Worksheet` object
-#     worksheet = workbook[workbook.sheetnames[sheet_num]]
-
-#     # List of indices corresponding to all hidden rows
-#     if not read_hidden:
-#         hidden_rows_idx = [
-#             row - 2
-#             for row, dimension in worksheet.row_dimensions.items()
-#             if dimension.hidden
-#         ]
-
-#         df.drop(hidden_rows_idx, axis=0, inplace=True)
-
-#         # Reset the index
-#         df.reset_index(drop=True, inplace=True)
-#     return df
