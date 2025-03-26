@@ -25,9 +25,9 @@
 
 - Ensure that **BedTools** is installed before running the script.
 
-# Get Intersection between two P2P files
+# Get common p2p between two P2P files
 
-find_common_p2p.py
+**find_common_p2p.py**
 
 ## Parameters:
 
