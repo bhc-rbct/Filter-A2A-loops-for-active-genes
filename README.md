@@ -1,5 +1,7 @@
 # Filter A2A Loops for Active Genes
 
+**p2pForActiveGenes.py**
+
 ## Parameters:
 
 - **`-uts`**: Unfiltered list of TSS/TES regions (required)
@@ -22,3 +24,16 @@
 ## Notes:
 
 - Ensure that **BedTools** is installed before running the script.
+
+# Get Intersection between two P2P files
+
+find_common_p2p.py
+
+## Parameters:
+
+- **`-p2ps`**: Paths to the two P2P files (`p2p_plus_numInteractions_plus_associated_iaGeneList.bedpe` files) to find common p2ps. Provide two file paths separated by a space. (required)
+- **`-o`**: Two file names separated by a space. The first one is used for the file with the number of interactions from the first given p2p file and the second from the second p2p file (required)
+
+## Results:
+
+1. Two files named according to the -o parameter, containing the common peaks and the corresponding number of interactions.

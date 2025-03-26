@@ -304,7 +304,7 @@ def runAllSteps(
     TSS_active_genes = tSS_TSE_df[tSS_TSE_df.iloc[:, 3].isin(active_genes)].drop_duplicates(subset=[tSS_TSE_df.columns[3]], keep='first')
     TSS_active_genes.to_csv(output_dir / 'TSS_TES_for_iag_only_first_appearance_per_gene.bed', sep='\t', header=False, index=False)
 
-    # os.remove(output_dir / f"{resFPrefix}{INT_P2P_NAME}")
+    os.remove(output_dir / f"{resFPrefix}{INT_P2P_NAME}")
     os.remove(tSS_TSE_df_ig_path)
     os.remove(output_dir / f"{TS_fPrefix}_iag.bed")
 
