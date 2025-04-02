@@ -199,7 +199,7 @@ def get_interaction_per_enhancer_df(p2p_for_TSS_iag_df, min_score):
 
     # Then group by TF coordinates
     sum_scores = unique_scores.groupby(['TF_chrom', 'TF_start', 'TF_end'])[P2P_SCORE].sum().reset_index()
-    all_genes = p2p_for_TSS_iag_df.groupby(['TF_chrom', 'TF_start', 'TF_end'])['TSS_gene_name'].agg(lambda x: ', '.join(x.unique())).reset_index()
+    all_genes = p2p_for_TSS_iag_df.groupby(['TF_chrom', 'TF_start', 'TF_end'])[COL_NAMES_GENE].agg(lambda x: ', '.join(x.unique())).reset_index()
 
     # Merge the results
     interactions_summary = pd.merge(sum_scores, all_genes, on=['TF_chrom', 'TF_start', 'TF_end'])
