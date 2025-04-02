@@ -194,15 +194,6 @@ def get_interaction_per_enhancer_df(p2p_for_TSS_iag_df, min_score):
     if min_score > 1:
         p2p_for_TSS_iag_df = p2p_for_TSS_iag_df[p2p_for_TSS_iag_df[P2P_SCORE] >= min_score]
 
-    # # Group by gene, summing scores, and sort by interaction score
-    # interactions_summary = (
-    #     p2p_for_TSS_iag_df
-    #     .groupby(["TF_chrom", "TF_start", "TF_end"])[P2P_SCORE]
-    #     .sum()
-    #     .reset_index()
-    #     #.sort_values(by=[P2P_SCORE], ascending=False)
-    # )
-
     # First remove duplicate TF-TSS pairs keeping the first P2P_SCORE (or sum them if needed)
     unique_scores = p2p_for_TSS_iag_df.drop_duplicates(['TF_chrom', 'TF_start', 'TF_end', "TSS_chrom", "TSS_start", "TSS_end"])
 
