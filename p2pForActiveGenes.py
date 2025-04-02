@@ -146,7 +146,7 @@ def agg_unique_p2p_plus_filter(p2p_for_TSS_iag_df, min_score):
     grouped_df = (
         p2p_for_TSS_iag_df
         .groupby(COL_NAMES_BEDPE_GB)[COL_NAMES_GENE]
-        .unique()
+        .agg(lambda x: ', '.join(x.unique()))
         .reset_index()
     )
 
@@ -194,14 +194,24 @@ def get_interaction_per_enhancer_df(p2p_for_TSS_iag_df, min_score):
     if min_score > 1:
         p2p_for_TSS_iag_df = p2p_for_TSS_iag_df[p2p_for_TSS_iag_df[P2P_SCORE] >= min_score]
 
-    # Group by gene, summing scores, and sort by interaction score
-    interactions_summary = (
-        p2p_for_TSS_iag_df
-        .groupby(["TF_chrom", "TF_start", "TF_end"])[P2P_SCORE]
-        .sum()
-        .reset_index()
-        #.sort_values(by=[P2P_SCORE], ascending=False)
-    )
+    # # Group by gene, summing scores, and sort by interaction score
+    # interactions_summary = (
+    #     p2p_for_TSS_iag_df
+    #     .groupby(["TF_chrom", "TF_start", "TF_end"])[P2P_SCORE]
+    #     .sum()
+    #     .reset_index()
+    #     #.sort_values(by=[P2P_SCORE], ascending=False)
+    # )
+
+    # First remove duplicate TF-TSS pairs keeping the first P2P_SCORE (or sum them if needed)
+    unique_scores = p2p_for_TSS_iag_df.drop_duplicates(['TF_chrom', 'TF_start', 'TF_end', "TSS_chrom", "TSS_start", "TSS_end"])
+
+    # Then group by TF coordinates
+    sum_scores = unique_scores.groupby(['TF_chrom', 'TF_start', 'TF_end'])[P2P_SCORE].sum().reset_index()
+    all_genes = p2p_for_TSS_iag_df.groupby(['TF_chrom', 'TF_start', 'TF_end'])['TSS_gene_name'].agg(lambda x: ', '.join(x.unique())).reset_index()
+
+    # Merge the results
+    interactions_summary = pd.merge(sum_scores, all_genes, on=['TF_chrom', 'TF_start', 'TF_end'])
 
     return interactions_summary
 
@@ -304,7 +314,7 @@ def runAllSteps(
     TSS_active_genes = tSS_TSE_df[tSS_TSE_df.iloc[:, 3].isin(active_genes)].drop_duplicates(subset=[tSS_TSE_df.columns[3]], keep='first')
     TSS_active_genes.to_csv(output_dir / 'TSS_TES_for_iag_only_first_appearance_per_gene.bed', sep='\t', header=False, index=False)
 
-    os.remove(output_dir / f"{resFPrefix}{INT_P2P_NAME}")
+    # os.remove(output_dir / f"{resFPrefix}{INT_P2P_NAME}")
     os.remove(tSS_TSE_df_ig_path)
     os.remove(output_dir / f"{TS_fPrefix}_iag.bed")
 
