@@ -195,7 +195,7 @@ def get_interaction_per_enhancer_df(p2p_for_TSS_iag_df, min_score):
         p2p_for_TSS_iag_df = p2p_for_TSS_iag_df[p2p_for_TSS_iag_df[P2P_SCORE] >= min_score]
 
     # First remove duplicate TF-TSS pairs keeping the first P2P_SCORE (or sum them if needed)
-    unique_scores = p2p_for_TSS_iag_df.drop_duplicates(['TF_chrom', 'TF_start', 'TF_end', "TSS_chrom", "TSS_start", "TSS_end"])
+    unique_scores = p2p_for_TSS_iag_df.drop_duplicates(["chrom1", "start1", "end1", "chrom2", "start2", "end2", "TSS_chrom", "TSS_start", "TSS_end"])
 
     # Then group by TF coordinates
     sum_scores = unique_scores.groupby(['TF_chrom', 'TF_start', 'TF_end'])[P2P_SCORE].sum().reset_index()
