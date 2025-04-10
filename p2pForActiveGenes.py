@@ -311,7 +311,7 @@ def runAllSteps(
 
 
 
-def main(args):
+def p2p_filter_main(args):
     start_time = time()
     
     # Prepare output directory
@@ -396,5 +396,5 @@ if __name__ == "__main__":
           f"- TS type: {args.kind_TS}\n- Output Directory: {args.output_directory}")
     
     # Run the main function
-    main(args)
+    p2p_filter_main(args)
 
