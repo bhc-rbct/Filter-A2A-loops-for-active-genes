@@ -28,8 +28,12 @@
      - git clone https://github.com/bhc-rbct/Filter-A2A-loops-for-active-genes.git
 3. Create and activate conda environment (in Terminal):
    - conda env create -n p2p --file {Path_to}/p2p_environment.yml
+4. Activate conda environment
    - conda activate p2p
-4. Run the script (in Terminal)
+5. Run the script (in Terminal)
+
+Steps 2–3: Perform once only.
+Steps 4–5: Repeat for every Terminal.
 
 ## Notes:
 
