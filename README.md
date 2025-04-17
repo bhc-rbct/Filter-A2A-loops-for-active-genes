@@ -50,5 +50,4 @@
 5. Run the script (in Terminal)
 
 Steps 2–3: Perform once only.
-
 Steps 4–5: Repeat for every Terminal.
