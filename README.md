@@ -22,13 +22,14 @@
 5. **`TSS_TES_for_iag_only_first_appearance_per_gene.bed`**: A file containing the TSS/TES regions (from `-uts`) but only for active (and specified) genes, keeping only the first row per gene.
 
 ## Run on Jupyter
-1. Clone the git repository:
+1. Open Terminal:
    - File > New > Terminal
+2. Clone the git repository (in Terminal):
      - git clone https://github.com/bhc-rbct/Filter-A2A-loops-for-active-genes.git
-2. Create and activate conda environment (in Terminal):
+3. Create and activate conda environment (in Terminal):
    - conda env create -n p2p --file {Path_to}/p2p_environment.yml
    - conda activate p2p
-3. Run the script 
+4. Run the script (in Terminal)
 
 ## Notes:
 
