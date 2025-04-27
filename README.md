@@ -44,3 +44,18 @@
 ## Results:
 
 1. Two files named according to the -o parameter, containing the common peaks and the corresponding number of interactions.
+
+# Run Scripts on Jupyter
+1. Open Terminal:
+   - File > New > Terminal
+2. Clone the git repository (in Terminal):
+     - git clone https://github.com/bhc-rbct/Filter-A2A-loops-for-active-genes.git
+3. Create and activate conda environment (in Terminal):
+   - conda env create -n p2p --file {Path_to}/p2p_environment.yml
+4. Activate conda environment
+   - conda activate p2p
+5. Run the script (in Terminal)
+
+Notes:
+- Steps 2–3: Perform once only.
+- Steps 4–5: Repeat for every Terminal.
