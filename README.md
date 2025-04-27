@@ -21,6 +21,13 @@
 4. **`parameters_used.json`**: A JSON file summarizing the parameters that were used.
 5. **`TSS_TES_for_iag_only_first_appearance_per_gene.bed`**: A file containing the TSS/TES regions (from `-uts`) but only for active (and specified) genes, keeping only the first row per gene.
 
+## Run on https://jupyter.rbct.de/
+
+1. Click on File > New > Terminal 
+2. In the Terminal enter:
+    - git clone https://github.com/bhc-rbct/Filter-A2A-loops-for-active-genes.git
+    - conda activate p2p
+
 ## Notes:
 
 - Ensure that **BedTools** is installed before running the script.

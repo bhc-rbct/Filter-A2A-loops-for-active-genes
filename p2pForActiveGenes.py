@@ -312,6 +312,7 @@ def runAllSteps(
 
 
 def p2p_filter_main(args):
+    print()
     start_time = time()
     
     # Prepare output directory
