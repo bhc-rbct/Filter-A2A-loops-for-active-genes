@@ -7,6 +7,7 @@ Description: Script to filter P2P files using TSS/TES data with optional gene fi
 """
 
 import argparse
+import datetime
 import json
 from typing import List
 import pandas as pd
@@ -312,56 +313,73 @@ def runAllSteps(
 
 
 def p2p_filter_main(args):
-    print()
     start_time = time()
+    current_datetime = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     
     # Prepare output directory
     output_directory = Path(args.output_directory)
     output_directory.mkdir(parents=True, exist_ok=True)
+
+    status_file_prefix = f"{args.output_directory}/"
     
-    # Save parameters to a file for reproducibility
-    param_file = output_directory / "parameters_used.json"
-    with open(param_file, "w") as f:
-        json.dump(vars(args), f, indent=4)
+    try:
+        # Save parameters to a file for reproducibility
+        # param_file = output_directory / "parameters_used.json"
+        # with open(param_file, "w") as f:
+        #     json.dump(vars(args), f, indent=4)
+        
+        # Read input gene list if provided
+        i_genes_list = None
+        if args.genes_filename:
+            with open(args.genes_filename, 'r') as f:
+                i_genes_list = f.read().splitlines()
+
+        # Load input data
+        tSS_TSE_df = read_bed_as_df(args.tSS_TSE_uf, BED_COL_NAMES_G) if args.tSS_TSE_uf else None
+        h3k4me3_bed = BedTool(args.histone_bed_file) if args.histone_bed_file else None
+
+        # Handle transcription factor (TF) file
+        tf_basename = os.path.basename(args.tF_bed_file)
+        tf_temp_path = output_directory / f"{os.path.splitext(tf_basename)[0]}_temp.bed"
+        tf_df = read_bed_as_df(args.tF_bed_file, custom_col_name=COL_SIMP_BED, set_numcols=3)
+        tf_df.to_csv(tf_temp_path, sep='\t', header=None, index=None)
+        tF_bed = BedTool(tf_temp_path)
+
+        # Load P2P file
+        p2p_temp_path = output_directory / f"{os.path.splitext(tf_basename)[0]}_temp.bedpe"
+        tf_df = read_bed_as_df(args.p2p_file, custom_col_name=COL_NAMES_BEDPE_GB, set_numcols=7)
+        tf_df.to_csv(p2p_temp_path, sep='\t', header=None, index=None)
+        p2p_bedpe = BedTool(p2p_temp_path)
+
+        # Generate file prefixes for output
+        resFPrefix = f"{os.path.basename(args.p2p_file).split('.bedpe')[0].replace('A2A', '')}x_{os.path.basename(args.tF_bed_file).split('.bed')[0]}"
+        TS_fPrefix = (f"{os.path.basename(args.tSS_TSE_uf).split('.bed')[0]}_c{args.kind_TS}_"
+                    f"{os.path.basename(args.histone_bed_file).split('.bed')[0]}" if args.tSS_TSE_uf else None)
+
+        # Run main steps
+        runAllSteps(i_genes_list, tSS_TSE_df, h3k4me3_bed, tF_bed, p2p_bedpe, args.kind_TS,
+                    args.min_P2P_SCORE, resFPrefix, TS_fPrefix, output_directory)
+        
+        # Clean up temporary files
+        os.remove(tf_temp_path)
+        os.remove(p2p_temp_path)
+        with open(f"{status_file_prefix}finished_run_{current_datetime}.txt", 'w') as f:
+            f.write(f"Successfully completed at {datetime.datetime.now().isoformat()}\n")
+            f.write(f"Total execution time: {time() - start_time:.2f} seconds\n")
+            f.write(f"Parameters used:\n{json.dumps(vars(args), indent=4)}")
+            
+        
+    except Exception as e:
+        # Create failed file with error message
+        with open(f"{status_file_prefix}failed_{current_datetime}.txt", 'w') as f:
+            f.write(f"Failed at {datetime.datetime.now().isoformat()}\n")
+            f.write(f"Total execution time: {time() - start_time:.2f} seconds\n")
+            f.write(f"Parameters used:\n{json.dumps(vars(args), indent=4)}\n\n")
+            f.write(f"Error: {str(e)}\n")
+            
+        # Re-raise the exception to maintain original behavior
+        raise
     
-    # Read input gene list if provided
-    i_genes_list = None
-    if args.genes_filename:
-        with open(args.genes_filename, 'r') as f:
-            i_genes_list = f.read().splitlines()
-
-    # Load input data
-    tSS_TSE_df = read_bed_as_df(args.tSS_TSE_uf, BED_COL_NAMES_G) if args.tSS_TSE_uf else None
-    h3k4me3_bed = BedTool(args.histone_bed_file) if args.histone_bed_file else None
-
-    # Handle transcription factor (TF) file
-    tf_basename = os.path.basename(args.tF_bed_file)
-    tf_temp_path = output_directory / f"{os.path.splitext(tf_basename)[0]}_temp.bed"
-    tf_df = read_bed_as_df(args.tF_bed_file, custom_col_name=COL_SIMP_BED, set_numcols=3)
-    tf_df.to_csv(tf_temp_path, sep='\t', header=None, index=None)
-    tF_bed = BedTool(tf_temp_path)
-
-    # Load P2P file
-    p2p_temp_path = output_directory / f"{os.path.splitext(tf_basename)[0]}_temp.bedpe"
-    tf_df = read_bed_as_df(args.p2p_file, custom_col_name=COL_NAMES_BEDPE_GB, set_numcols=7)
-    tf_df.to_csv(p2p_temp_path, sep='\t', header=None, index=None)
-    p2p_bedpe = BedTool(p2p_temp_path)
-
-    # Generate file prefixes for output
-    resFPrefix = f"{os.path.basename(args.p2p_file).split('.bedpe')[0].replace('A2A', '')}x_{os.path.basename(args.tF_bed_file).split('.bed')[0]}"
-    TS_fPrefix = (f"{os.path.basename(args.tSS_TSE_uf).split('.bed')[0]}_c{args.kind_TS}_"
-                  f"{os.path.basename(args.histone_bed_file).split('.bed')[0]}" if args.tSS_TSE_uf else None)
-
-    # Run main steps
-    runAllSteps(i_genes_list, tSS_TSE_df, h3k4me3_bed, tF_bed, p2p_bedpe, args.kind_TS,
-                args.min_P2P_SCORE, resFPrefix, TS_fPrefix, output_directory)
-    
-    # Clean up temporary files
-    os.remove(tf_temp_path)
-    os.remove(p2p_temp_path)
-
-    
-    print(f"--- Total execution time: {time() - start_time:.2f} seconds ---")
 
 
 if __name__ == "__main__":
