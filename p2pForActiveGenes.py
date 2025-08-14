@@ -371,7 +371,7 @@ def p2p_filter_main(args):
         
     except Exception as e:
         # Create failed file with error message
-        with open(f"{status_file_prefix}failed_{current_datetime}.txt", 'w') as f:
+        with open(f"{status_file_prefix}failed_run_{current_datetime}.txt", 'w') as f:
             f.write(f"Failed at {datetime.datetime.now().isoformat()}\n")
             f.write(f"Total execution time: {time() - start_time:.2f} seconds\n")
             f.write(f"Parameters used:\n{json.dumps(vars(args), indent=4)}\n\n")
